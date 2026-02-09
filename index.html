@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Preview - Live Editor</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .clear-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .clear-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            gap: 10px;
+            padding: 20px;
+            height: calc(100vh - 80px);
+        }
+
+        .panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background-color: #34495e;
+            color: white;
+            padding: 12px 20px;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .markdown-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            padding: 20px;
+            font-family: 'Courier New', Consolas, monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            background-color: #fafafa;
+        }
+
+        .preview-output {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: white;
+            line-height: 1.6;
+        }
+
+        /* Estilos para o markdown renderizado */
+        .preview-output h1, .preview-output h2, .preview-output h3, 
+        .preview-output h4, .preview-output h5, .preview-output h6 {
+            margin: 20px 0 10px 0;
+            color: #2c3e50;
+        }
+
+        .preview-output h1 {
+            font-size: 2em;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .preview-output h2 {
+            font-size: 1.6em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+
+        .preview-output p {
+            margin: 10px 0;
+        }
+
+        .preview-output ul, .preview-output ol {
+            margin: 10px 0;
+            padding-left: 30px;
+        }
+
+        .preview-output li {
+            margin: 5px 0;
+        }
+
+        .preview-output code {
+            background-color: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: 'Courier New', Consolas, monospace;
+            font-size: 0.9em;
+        }
+
+        .preview-output pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        .preview-output pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .preview-output blockquote {
+            border-left: 4px solid #3498db;
+            margin: 10px 0;
+            padding-left: 15px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .preview-output table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .preview-output table th,
+        .preview-output table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .preview-output table th {
+            background-color: #f8f8f8;
+            font-weight: 600;
+        }
+
+        .preview-output a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .preview-output a:hover {
+            text-decoration: underline;
+        }
+
+        .preview-output img {
+            max-width: 100%;
+            height: auto;
+            margin: 10px 0;
+        }
+
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: #34495e;
+            color: white;
+            padding: 5px 20px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📝 Markdown Live Preview</h1>
+        <button class="clear-btn" onclick="clearEditor()">🗑️ Limpar</button>
+    </div>
+
+    <div class="container">
+        <div class="panel">
+            <div class="panel-header">📝 Editor Markdown</div>
+            <textarea 
+                class="markdown-input" 
+                id="markdownInput" 
+                placeholder="Cole seu Markdown aqui...
+
+# Exemplo de Markdown
+
+## Título 2
+
+Este é um **texto em negrito** e este é um *texto em itálico*.
+
+### Lista:
+- Item 1
+- Item 2
+- Item 3
+
+### Código:
+```javascript
+function exemplo() {
+    console.log('Olá, mundo!');
+}
+```
+
+### Link:
+[GitHub](https://github.com)
+
+### Tabela:
+| Coluna 1 | Coluna 2 |
+|----------|----------|
+| Valor 1  | Valor 2  |"
+                oninput="updatePreview()"
+                onkeydown="handleTab(event)"></textarea>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">👁️ Preview</div>
+            <div class="preview-output" id="previewOutput"></div>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <span>Status: <span id="status">Pronto</span></span>
+        <span>Caracteres: <span id="charCount">0</span></span>
+    </div>
+
+    <script>
+        // Configuração do marked para suportar badges
+        marked.setOptions({
+            gfm: true,
+            breaks: true,
+            sanitize: false,
+            smartLists: true,
+            smartypants: true,
+            highlight: function(code, lang) {
+                if (lang && hljs && hljs.getLanguage(lang)) {
+                    try {
+                        return hljs.highlight(lang, code).value;
+                    } catch (e) {}
+                }
+                return code;
+            }
+        });
+
+        function updatePreview() {
+            const input = document.getElementById('markdownInput');
+            const output = document.getElementById('previewOutput');
+            const status = document.getElementById('status');
+            const charCount = document.getElementById('charCount');
+            
+            try {
+                // Converte markdown para HTML
+                const html = marked.parse(input.value);
+                
+                // Sanitiza o HTML para segurança
+                const cleanHtml = DOMPurify.sanitize(html);
+                
+                output.innerHTML = cleanHtml;
+                status.textContent = 'Atualizado';
+                charCount.textContent = input.value.length;
+                
+                // Reset status após 1 segundo
+                setTimeout(() => {
+                    status.textContent = 'Pronto';
+                }, 1000);
+                
+            } catch (error) {
+                status.textContent = 'Erro: ' + error.message;
+                console.error('Erro ao renderizar markdown:', error);
+            }
+        }
+
+        function clearEditor() {
+            if (confirm('Tem certeza que deseja limpar o editor?')) {
+                document.getElementById('markdownInput').value = '';
+                document.getElementById('previewOutput').innerHTML = '<p style="color: #999; text-align: center; margin-top: 50px;">Cole seu Markdown no painel da esquerda</p>';
+                document.getElementById('charCount').textContent = '0';
+                document.getElementById('status').textContent = 'Limpo';
+            }
+        }
+
+        function handleTab(event) {
+            if (event.key === 'Tab') {
+                event.preventDefault();
+                const textarea = event.target;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                
+                // Adiciona 4 espaços (ou você pode usar '\t' para tab)
+                textarea.value = textarea.value.substring(0, start) + '    ' + textarea.value.substring(end);
+                textarea.selectionStart = textarea.selectionEnd = start + 4;
+                
+                updatePreview();
+            }
+        }
+
+        // Inicializar preview
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePreview();
+        });
+
+        // Salvar automaticamente no localStorage
+        setInterval(function() {
+            const content = document.getElementById('markdownInput').value;
+            localStorage.setItem('markdownEditor', content);
+        }, 5000);
+
+        // Restaurar conteúdo salvo
+        document.addEventListener('DOMContentLoaded', function() {
+            const saved = localStorage.getItem('markdownEditor');
+            if (saved && saved.trim()) {
+                const useStored = confirm('Encontrei conteúdo salvo. Deseja restaurar?');
+                if (useStored) {
+                    document.getElementById('markdownInput').value = saved;
+                    updatePreview();
+                }
+            }
+        });
+
+        // Atalhos de teclado
+        document.addEventListener('keydown', function(event) {
+            if (event.ctrlKey || event.metaKey) {
+                switch (event.key) {
+                    case 'l':
+                        event.preventDefault();
+                        clearEditor();
+                        break;
+                    case 's':
+                        event.preventDefault();
+                        // Salva o conteúdo
+                        const content = document.getElementById('markdownInput').value;
+                        const blob = new Blob([content], { type: 'text/markdown' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'documento.md';
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
